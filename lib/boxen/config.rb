@@ -11,19 +11,18 @@ module Boxen
   # args, environment variables, config files, or the keychain.
 
   class Config
+
+    CONFIG_FILE_PATH = "#{ENV['HOME']}/.boxen/defaults.json"
+
     def self.load(&block)
       new do |config|
-        file = "#{config.homedir}/config/boxen/defaults.json"
-
-        if File.file? file
-          attrs = JSON.parse File.read file
-
-          attrs.each do |key, value|
-            if !value.nil? && config.respond_to?(selector = "#{key}=")
-              config.send selector, value
-            end
-          end
+        deprecated_config_file_path = "#{config.homedir}/config/boxen/defaults.json"
+        if File.file? deprecated_config_file_path
+          warn "DEPRECATION: #{config.homedir}/config/boxen/defaults.json is deprecated; consider using ~/.boxen/defaults.json instead!"
+          config.override JSON.parse File.read deprecated_config_file_path
         end
+
+        config.override JSON.parse File.read CONFIG_FILE_PATH if File.file? CONFIG_FILE_PATH
 
         keychain        = Boxen::Keychain.new config.user
         config.token    = keychain.token
@@ -60,10 +59,9 @@ module Boxen
         :repotemplate => config.repotemplate
       }
 
-      file = "#{config.homedir}/config/boxen/defaults.json"
-      FileUtils.mkdir_p File.dirname file
+      FileUtils.mkdir_p File.dirname CONFIG_FILE_PATH
 
-      File.open file, "wb" do |f|
+      File.open CONFIG_FILE_PATH, "wb" do |f|
         f.write JSON.generate Hash[attrs.reject { |k, v| v.nil? }]
       end
 
@@ -80,6 +78,16 @@ module Boxen
       @pull = true
 
       yield self if block_given?
+    end
+
+    # Override config items with those provided in the `attrs` hash.
+
+    def override(attrs)
+      attrs.each do |key, value|
+        if !value.nil? && self.respond_to?(selector = "#{key}=")
+          self.send selector, value
+        end
+      end
     end
 
     # Create an API instance using the current user creds. A new
