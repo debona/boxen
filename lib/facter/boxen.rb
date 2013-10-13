@@ -18,11 +18,11 @@ facts["boxen_repodir"] = config.repodir
 facts["boxen_user"]    = config.user
 facts["luser"]         = config.user # this is goin' away
 
-Dir["#{config.homedir}/config/facts/*.json"].each do |file|
+Dir["#{factsdir}/*.json"].each do |file|
   facts.merge! JSON.parse File.read file
 end
 
-if File.directory?(dot_boxen) && File.file?(user_config)
+if File.file?(user_config)
   facts.merge! JSON.parse(File.read(user_config))
 end
 
